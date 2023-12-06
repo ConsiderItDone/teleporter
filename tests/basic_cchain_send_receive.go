@@ -2,14 +2,23 @@ package tests
 
 import (
 	"context"
+	"fmt"
 	"math/big"
+	"time"
 
+	"github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
+	"github.com/ava-labs/subnet-evm/core/types"
+	"github.com/ava-labs/subnet-evm/ethclient"
+	"github.com/ava-labs/subnet-evm/rpc"
 	teleportermessenger "github.com/ava-labs/teleporter/abi-bindings/go/Teleporter/TeleporterMessenger"
+	teleporterregistry "github.com/ava-labs/teleporter/abi-bindings/go/Teleporter/upgrades/TeleporterRegistry"
 	"github.com/ava-labs/teleporter/tests/network"
 	"github.com/ava-labs/teleporter/tests/utils"
 	localUtils "github.com/ava-labs/teleporter/tests/utils/local-network-utils"
+	deploymentUtils "github.com/ava-labs/teleporter/utils/deployment-utils"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	. "github.com/onsi/gomega"
 )
 
@@ -22,10 +31,62 @@ func BasicCChainSendReceive(network network.Network) {
 	subnets := network.GetSubnetsInfo()
 	Expect(len(subnets)).Should(BeNumerically(">=", 2))
 	subnetAInfo := subnets[0]
-	subnetBInfo := subnets[1]
-	teleporterContractAddress := network.GetTeleporterContractAddress()
+
+	crpcconn, err := rpc.Dial(fmt.Sprintf("%s/ext/bc/C/rpc", subnets[1].ChainNodeURIs[0]))
+	Expect(err).Should(BeNil())
+	cethclient := ethclient.NewClient(crpcconn)
+
+	cchainid, err := cethclient.ChainID(context.Background())
+	Expect(err).Should(BeNil())
+
 	fundedAddress, fundedKey := network.GetFundedAccountInfo()
 
+	rawTeleporterDeployerTransaction, _, rawTeleporterContractAddress, err :=
+		deploymentUtils.ConstructKeylessTransaction("./contracts/out/TeleporterMessenger.sol/TeleporterMessenger.json", false)
+	Expect(err).Should(BeNil())
+
+	err = crpcconn.CallContext(context.Background(), nil, "eth_sendRawTransaction", hexutil.Encode(rawTeleporterDeployerTransaction))
+	Expect(err).Should(BeNil())
+	time.Sleep(10 * time.Second)
+
+	teleporterCode, err := cethclient.CodeAt(context.Background(), rawTeleporterContractAddress, nil)
+	Expect(err).Should(BeNil())
+	Expect(len(teleporterCode)).Should(BeNumerically(">", 2)) // 0x is an EOA, contract returns the bytecode
+
+	teleporterMessenger, err := teleportermessenger.NewTeleporterMessenger(
+		rawTeleporterContractAddress, cethclient,
+	)
+	Expect(err).Should(BeNil())
+
+	opts, err := bind.NewKeyedTransactorWithChainID(fundedKey, cchainid)
+	Expect(err).Should(BeNil())
+
+	teleporterRegistryAddress, deployTx, _, err := teleporterregistry.DeployTeleporterRegistry(
+		opts, cethclient, []teleporterregistry.ProtocolRegistryEntry{
+			{
+				Version:         big.NewInt(1),
+				ProtocolAddress: rawTeleporterContractAddress,
+			},
+		},
+	)
+	Expect(err).Should(BeNil())
+
+	deployReceipt, err := bind.WaitMined(context.Background(), cethclient, deployTx)
+	Expect(err).Should(BeNil())
+	Expect(deployReceipt.Status).Should(Equal(types.ReceiptStatusSuccessful))
+
+	subnetBInfo := utils.SubnetTestInfo{
+		SubnetID:                  constants.EVMID,
+		BlockchainID:              constants.EVMID,
+		ChainNodeURIs:             subnets[1].ChainNodeURIs,
+		ChainWSClient:             cethclient,
+		ChainRPCClient:            cethclient,
+		ChainIDInt:                cchainid,
+		TeleporterRegistryAddress: teleporterRegistryAddress,
+		TeleporterMessenger:       teleporterMessenger,
+	}
+
+	teleporterContractAddress := network.GetTeleporterContractAddress()
 	//
 	// Send a transaction to Subnet A to issue a Warp Message from the Teleporter contract to Subnet B
 	//
