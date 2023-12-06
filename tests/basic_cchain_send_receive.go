@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
 	"github.com/ava-labs/subnet-evm/core/types"
@@ -76,7 +77,7 @@ func BasicCChainSendReceive(network network.Network) {
 	Expect(deployReceipt.Status).Should(Equal(types.ReceiptStatusSuccessful))
 
 	subnetBInfo := utils.SubnetTestInfo{
-		SubnetID:                  constants.EVMID,
+		SubnetID:                  ids.Empty,
 		BlockchainID:              constants.EVMID,
 		ChainNodeURIs:             subnets[1].ChainNodeURIs,
 		ChainWSClient:             cethclient,
