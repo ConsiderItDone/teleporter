@@ -51,7 +51,7 @@ var _ = ginkgo.BeforeSuite(func() {
 var _ = ginkgo.AfterSuite(localUtils.TearDownNetwork)
 
 var _ = ginkgo.Describe("[Teleporter integration tests]", func() {
-	ginkgo.It("Send a message from Subnet A to Subnet B, and one from B to A", func() {
+	ginkgo.It("Send a message from Subnet A to CChain, and one from CChain to A", func() {
 		BasicCChainSendReceive(&network.LocalNetwork{})
 	})
 	// Cross-chain application tests
