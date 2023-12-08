@@ -7,7 +7,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ava-labs/teleporter/tests/network"
 	localUtils "github.com/ava-labs/teleporter/tests/utils/local-network-utils"
 	deploymentUtils "github.com/ava-labs/teleporter/utils/deployment-utils"
 	"github.com/ethereum/go-ethereum/log"
@@ -51,12 +50,10 @@ var _ = ginkgo.BeforeSuite(func() {
 var _ = ginkgo.AfterSuite(localUtils.TearDownNetwork)
 
 var _ = ginkgo.Describe("[Teleporter integration tests]", func() {
-	ginkgo.It("Send a message from Subnet A to CChain, and one from CChain to A", func() {
-		BasicCChainSendReceive(&network.LocalNetwork{})
-	})
 	// Cross-chain application tests
 	//ginkgo.It("Example cross chain messenger", ExampleMessengerGinkgo)
 	//ginkgo.It("ERC20 bridge multihop", ERC20BridgeMultihopGinkgo)
+	ginkgo.It("C Chain ERC20 bridge multihop", CChainERC20BridgeMultihopGinkgo)
 
 	// Teleporter tests
 	//ginkgo.It("Send a message from Subnet A to Subnet B, and one from B to A", func() {
