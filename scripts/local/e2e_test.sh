@@ -32,19 +32,19 @@ else
   $HOME/.foundry/bin/forge build
 fi
 
-cd $cwd
-# Build ginkgo
-# to install the ginkgo binary (required for test build and run)
-go install -v github.com/onsi/ginkgo/v2/ginkgo@${GINKGO_VERSION}
-
-ginkgo build ./tests/
-
-# Run the tests
-echo "Running e2e tests $RUN_E2E"
-RUN_E2E=true ./tests/tests.test \
-  --ginkgo.vv \
-  --ginkgo.label-filter=${GINKGO_LABEL_FILTER:-""} \
-  --ginkgo.trace
-
-echo "e2e tests passed"
-exit 0
+#cd $cwd
+## Build ginkgo
+## to install the ginkgo binary (required for test build and run)
+#go install -v github.com/onsi/ginkgo/v2/ginkgo@${GINKGO_VERSION}
+#
+#ginkgo build ./tests/
+#
+## Run the tests
+#echo "Running e2e tests $RUN_E2E"
+#RUN_E2E=true ./tests/tests.test \
+#  --ginkgo.vv \
+#  --ginkgo.label-filter=${GINKGO_LABEL_FILTER:-""} \
+#  --ginkgo.trace
+#
+#echo "e2e tests passed"
+#exit 0

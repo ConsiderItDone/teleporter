@@ -7,12 +7,13 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ava-labs/teleporter/tests/network"
-	localUtils "github.com/ava-labs/teleporter/tests/utils/local-network-utils"
-	deploymentUtils "github.com/ava-labs/teleporter/utils/deployment-utils"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/ava-labs/teleporter/tests/network"
+	localUtils "github.com/ava-labs/teleporter/tests/utils/local-network-utils"
+	deploymentUtils "github.com/ava-labs/teleporter/utils/deployment-utils"
 )
 
 const (
@@ -56,7 +57,7 @@ var _ = ginkgo.Describe("[Teleporter integration tests]", func() {
 	})
 	// Cross-chain application tests
 	//ginkgo.It("Example cross chain messenger", ExampleMessengerGinkgo)
-	//ginkgo.It("ERC20 bridge multihop", ERC20BridgeMultihopGinkgo)
+	ginkgo.It("ERC20 bridge multihop", ERC20BridgeMultihopGinkgo)
 
 	// Teleporter tests
 	//ginkgo.It("Send a message from Subnet A to Subnet B, and one from B to A", func() {

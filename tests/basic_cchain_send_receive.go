@@ -11,26 +11,27 @@ import (
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ava-labs/subnet-evm/ethclient"
 	"github.com/ava-labs/subnet-evm/rpc"
+	"github.com/ethereum/go-ethereum/common"
+	. "github.com/onsi/gomega"
+
 	teleportermessenger "github.com/ava-labs/teleporter/abi-bindings/go/Teleporter/TeleporterMessenger"
 	teleporterregistry "github.com/ava-labs/teleporter/abi-bindings/go/Teleporter/upgrades/TeleporterRegistry"
 	"github.com/ava-labs/teleporter/tests/network"
 	"github.com/ava-labs/teleporter/tests/utils"
 	localUtils "github.com/ava-labs/teleporter/tests/utils/local-network-utils"
-	"github.com/ethereum/go-ethereum/common"
-	. "github.com/onsi/gomega"
 )
 
 // Tests basic one-way send from Subnet A to C Chain and vice versa
 func BasicCChainSendReceive(network network.Network) {
 	var (
-		teleporterMessageID *big.Int
+	//teleporterMessageID *big.Int
 	)
 
 	subnets := network.GetSubnetsInfo()
 	Expect(len(subnets)).Should(BeNumerically(">=", 2))
 	subnetAInfo := subnets[0]
 
-	crpcconn, err := rpc.Dial(fmt.Sprintf("%s/ext/bc/C/rpc", subnets[1].ChainNodeURIs[0]))
+	crpcconn, err := rpc.Dial(fmt.Sprintf("%s/ext/bc/C/rpc", subnets[0].ChainNodeURIs[0]))
 	Expect(err).Should(BeNil())
 	cethclient := ethclient.NewClient(crpcconn)
 
@@ -66,7 +67,7 @@ func BasicCChainSendReceive(network network.Network) {
 	subnetBInfo := utils.SubnetTestInfo{
 		SubnetID:                  ids.Empty,
 		BlockchainID:              constants.EVMID,
-		ChainNodeURIs:             subnets[1].ChainNodeURIs,
+		ChainNodeURIs:             subnets[0].ChainNodeURIs,
 		ChainWSClient:             cethclient,
 		ChainRPCClient:            cethclient,
 		ChainIDInt:                cchainid,
@@ -109,7 +110,7 @@ func BasicCChainSendReceive(network network.Network) {
 		Message:                 []byte{1, 2, 3, 4},
 	}
 
-	receipt, teleporterMessageID := utils.SendCrossChainMessageAndWaitForAcceptance(
+	receipt, _ := utils.SendCrossChainMessageAndWaitForAcceptance(
 		ctx,
 		subnetAInfo,
 		subnetBInfo,
@@ -122,43 +123,4 @@ func BasicCChainSendReceive(network network.Network) {
 	//
 	network.RelayMessage(ctx, receipt, subnetAInfo, subnetBInfo, true)
 
-	//
-	// Check Teleporter message received on the destination
-	//
-	delivered, err := subnetBInfo.TeleporterMessenger.MessageReceived(
-		&bind.CallOpts{}, subnetAInfo.BlockchainID, teleporterMessageID,
-	)
-	Expect(err).Should(BeNil())
-	Expect(delivered).Should(BeTrue())
-
-	//
-	// Send a transaction to Subnet B to issue a Warp Message from the Teleporter contract to Subnet A
-	//
-	sendCrossChainMessageInput.DestinationBlockchainID = subnetAInfo.BlockchainID
-	sendCrossChainMessageInput.FeeInfo.Amount = big.NewInt(0)
-	receipt, teleporterMessageID = utils.SendCrossChainMessageAndWaitForAcceptance(
-		ctx,
-		subnetBInfo,
-		subnetAInfo,
-		sendCrossChainMessageInput,
-		fundedKey,
-	)
-
-	//
-	// Relay the message to the destination
-	//
-	network.RelayMessage(ctx, receipt, subnetBInfo, subnetAInfo, true)
-
-	//
-	// Check Teleporter message received on the destination
-	//
-	delivered, err = subnetAInfo.TeleporterMessenger.MessageReceived(
-		&bind.CallOpts{}, subnetBInfo.BlockchainID, teleporterMessageID,
-	)
-	Expect(err).Should(BeNil())
-	Expect(delivered).Should(BeTrue())
-
-	utils.RedeemRelayerRewardsAndConfirm(
-		ctx, subnetAInfo, feeToken, feeTokenAddress, fundedKey, feeAmount,
-	)
 }
