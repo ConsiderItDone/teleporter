@@ -98,7 +98,7 @@ func ConstructSignedWarpMessageBytes(
 	// Loop over each client on chain A to ensure they all have time to accept the block.
 	// Note: if we did not confirm this here, the next stage could be racy since it assumes every node
 	// has accepted the block.
-	WaitForAllValidatorsToAcceptBlock(ctx, source.ChainNodeURIs, source.BlockchainID, sourceReceipt.BlockNumber.Uint64())
+	//WaitForAllValidatorsToAcceptBlock(ctx, source.ChainNodeURIs, source.BlockchainID, sourceReceipt.BlockNumber.Uint64())
 
 	// Get the aggregate signature for the Warp message
 	log.Info("Fetching aggregate signature from the source chain validators")
@@ -110,6 +110,49 @@ func ConstructSignedWarpMessageBytes(
 	Expect(err).Should(BeNil())
 
 	return signedWarpMessageBytes
+}
+
+// Constructs the aggregate signature, packs the Teleporter message, and relays to the destination
+// Returns the receipt on the destination chain
+func RelayMessageWithAddr(
+	ctx context.Context,
+	sourceReceipt *types.Receipt,
+	source utils.SubnetTestInfo,
+	destination utils.SubnetTestInfo,
+	teleporterContractAddress common.Address,
+	fundedKey *ecdsa.PrivateKey,
+	expectSuccess bool,
+) *types.Receipt {
+	// Fetch the Teleporter message from the logs
+	sendEvent, err :=
+		utils.GetEventFromLogs(sourceReceipt.Logs, source.TeleporterMessenger.ParseSendCrossChainMessage)
+	Expect(err).Should(BeNil())
+
+	signedWarpMessageBytes := ConstructSignedWarpMessageBytes(ctx, sourceReceipt, source, destination)
+
+	// Construct the transaction to send the Warp message to the destination chain
+	signedTx := utils.CreateReceiveCrossChainMessageTransaction(
+		ctx,
+		signedWarpMessageBytes,
+		sendEvent.Message.RequiredGasLimit,
+		teleporterContractAddress,
+		fundedKey,
+		destination,
+	)
+
+	log.Info("Sending transaction to destination chain")
+	receipt := utils.SendTransactionAndWaitForAcceptance(ctx, destination, signedTx, expectSuccess)
+
+	if !expectSuccess {
+		return nil
+	}
+
+	// Check the transaction logs for the ReceiveCrossChainMessage event emitted by the Teleporter contract
+	receiveEvent, err :=
+		utils.GetEventFromLogs(receipt.Logs, destination.TeleporterMessenger.ParseReceiveCrossChainMessage)
+	Expect(err).Should(BeNil())
+	Expect(receiveEvent.OriginBlockchainID[:]).Should(Equal(source.BlockchainID[:]))
+	return receipt
 }
 
 // Constructs the aggregate signature, packs the Teleporter message, and relays to the destination

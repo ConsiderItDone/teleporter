@@ -5,6 +5,7 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"math/big"
+	"strings"
 
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/constants"
@@ -38,9 +39,14 @@ func CChainERC20BridgeMultihop(network network.Network) {
 	fundedAddress, fundedKey := network.GetFundedAccountInfo()
 	ctx := context.Background()
 
-	crpcconn, err := rpc.Dial(fmt.Sprintf("%s/ext/bc/C/rpc", subnets[1].ChainNodeURIs[0]))
+	crpcconn1, err := rpc.Dial(fmt.Sprintf("%s/ext/bc/C/rpc", subnets[1].ChainNodeURIs[0]))
 	Expect(err).Should(BeNil())
-	cethclient := ethclient.NewClient(crpcconn)
+
+	crpcconn2, err := rpc.Dial(fmt.Sprintf("ws://%s/ext/bc/C/ws", strings.TrimPrefix(subnets[1].ChainNodeURIs[0], "http://")))
+	Expect(err).Should(BeNil())
+
+	cethclient := ethclient.NewClient(crpcconn1)
+	wethclient := ethclient.NewClient(crpcconn2)
 
 	cchainid, err := cethclient.ChainID(ctx)
 	Expect(err).Should(BeNil())
@@ -51,12 +57,12 @@ func CChainERC20BridgeMultihop(network network.Network) {
 	cchainTeleporterMessengerAddr, cchainDeployTeleporterMessengerTx, cchainTeleporterMessengerContract, err := teleportermessenger.DeployTeleporterMessenger(opts, cethclient)
 	Expect(err).Should(BeNil())
 
-	cchainDeployTeleporterMessengerReceipt, err := bind.WaitMined(context.Background(), cethclient, cchainDeployTeleporterMessengerTx)
+	cchainDeployTeleporterMessengerReceipt, err := bind.WaitMined(context.Background(), wethclient, cchainDeployTeleporterMessengerTx)
 	Expect(err).Should(BeNil())
 	Expect(cchainDeployTeleporterMessengerReceipt.Status).Should(Equal(types.ReceiptStatusSuccessful))
 
 	cchainTeleporterRegistryAddress, cchainDeployTeleporterRegistrTx, _, err := teleporterregistry.DeployTeleporterRegistry(
-		opts, cethclient, []teleporterregistry.ProtocolRegistryEntry{
+		opts, wethclient, []teleporterregistry.ProtocolRegistryEntry{
 			{
 				Version:         big.NewInt(1),
 				ProtocolAddress: cchainTeleporterMessengerAddr,
@@ -65,7 +71,7 @@ func CChainERC20BridgeMultihop(network network.Network) {
 	)
 	Expect(err).Should(BeNil())
 
-	cchainDeployTeleporterRegistryReceipt, err := bind.WaitMined(context.Background(), cethclient, cchainDeployTeleporterRegistrTx)
+	cchainDeployTeleporterRegistryReceipt, err := bind.WaitMined(context.Background(), wethclient, cchainDeployTeleporterRegistrTx)
 	Expect(err).Should(BeNil())
 	Expect(cchainDeployTeleporterRegistryReceipt.Status).Should(Equal(types.ReceiptStatusSuccessful))
 
@@ -73,7 +79,7 @@ func CChainERC20BridgeMultihop(network network.Network) {
 		SubnetID:                  ids.Empty,
 		BlockchainID:              constants.EVMID,
 		ChainNodeURIs:             subnets[1].ChainNodeURIs,
-		ChainWSClient:             cethclient,
+		ChainWSClient:             wethclient,
 		ChainRPCClient:            cethclient,
 		ChainIDInt:                cchainid,
 		TeleporterRegistryAddress: cchainTeleporterRegistryAddress, //teleporterRegistryAddress
@@ -137,7 +143,7 @@ func CChainERC20BridgeMultihop(network network.Network) {
 	)
 
 	// Relay message
-	network.RelayMessage(ctx, receipt, subnetAInfo, cchainInfo, true)
+	network.RelayMessageWithAddr(ctx, receipt, subnetAInfo, cchainInfo, cchainTeleporterMessengerAddr, fundedKey, true)
 	// Check Teleporter message received on the destination
 	delivered, err := cchainTeleporterMessenger.MessageReceived(
 		&bind.CallOpts{},
@@ -219,7 +225,7 @@ func CChainERC20BridgeMultihop(network network.Network) {
 	)
 
 	// Relay message
-	network.RelayMessage(ctx, receipt, subnetAInfo, cchainInfo, true)
+	network.RelayMessageWithAddr(ctx, receipt, subnetAInfo, cchainInfo, cchainTeleporterMessengerAddr, fundedKey, true)
 	// Check Teleporter message received on the destination
 	delivered, err = cchainTeleporterMessenger.MessageReceived(&bind.CallOpts{}, subnetAInfo.BlockchainID, messageID)
 	Expect(err).Should(BeNil())
@@ -290,7 +296,7 @@ func CChainERC20BridgeMultihop(network network.Network) {
 	)
 
 	// Relay message from SubnetB to SubnetA
-	receipt = network.RelayMessage(ctx, receipt, cchainInfo, subnetAInfo, true)
+	receipt = network.RelayMessageWithAddr(ctx, receipt, cchainInfo, subnetAInfo, cchainTeleporterMessengerAddr, fundedKey, true)
 	// Check Teleporter message received on the destination
 	delivered, err = subnetATeleporterMessenger.MessageReceived(
 		&bind.CallOpts{},

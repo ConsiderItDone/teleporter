@@ -243,3 +243,61 @@ func (n *FujiNetwork) RelayMessage(ctx context.Context,
 
 	return nil
 }
+
+func (n *FujiNetwork) RelayMessageWithAddr(ctx context.Context,
+	sourceReceipt *types.Receipt,
+	source utils.SubnetTestInfo,
+	destination utils.SubnetTestInfo,
+	teleporterContractAddress common.Address,
+	fundedKey *ecdsa.PrivateKey,
+	expectSuccess bool) *types.Receipt {
+	// Set the context to expire after 20 seconds
+	var cancel context.CancelFunc
+	cctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+
+	// Get the Teleporter message ID from the receipt
+	sendEvent, err := utils.GetEventFromLogs(
+		sourceReceipt.Logs, source.TeleporterMessenger.ParseSendCrossChainMessage,
+	)
+	Expect(err).Should(BeNil())
+	Expect(sendEvent.DestinationBlockchainID[:]).Should(Equal(destination.BlockchainID[:]))
+
+	teleporterMessageID := sendEvent.Message.MessageID
+
+	// Block until the message with the corresponding Teleporter message ID is received on the destination chain
+	newHeads := make(chan *types.Header, 10)
+	sub, err := destination.ChainWSClient.SubscribeNewHead(cctx, newHeads)
+	Expect(err).Should(BeNil())
+	defer sub.Unsubscribe()
+
+	select {
+	case <-cctx.Done():
+		log.Error("Message was not relayed in time")
+		Expect(true).Should(BeFalse())
+	case head := <-newHeads:
+		hash := head.Hash()
+		logs, err := destination.ChainRPCClient.FilterLogs(cctx, interfaces.FilterQuery{
+			BlockHash: &hash,
+			Addresses: []common.Address{teleporterContractAddress},
+		})
+		Expect(err).Should(BeNil())
+		if len(logs) > 0 {
+			var l []*types.Log
+			for _, log := range logs {
+				l = append(l, &log)
+			}
+
+			receiveEvent, err := utils.GetEventFromLogs(l, destination.TeleporterMessenger.ParseReceiveCrossChainMessage)
+			Expect(err).Should(BeNil())
+			if receiveEvent.MessageID.Cmp(teleporterMessageID) == 0 {
+				receipt, err := destination.ChainRPCClient.TransactionReceipt(cctx, receiveEvent.Raw.TxHash)
+				Expect(err).Should(BeNil())
+				Expect(receipt.Status).Should(Equal(types.ReceiptStatusSuccessful))
+				return receipt
+			}
+		}
+	}
+
+	return nil
+}

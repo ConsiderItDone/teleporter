@@ -19,4 +19,11 @@ type Network interface {
 		source utils.SubnetTestInfo,
 		destination utils.SubnetTestInfo,
 		expectSuccess bool) *types.Receipt
+	RelayMessageWithAddr(ctx context.Context,
+		sourceReceipt *types.Receipt,
+		source utils.SubnetTestInfo,
+		destination utils.SubnetTestInfo,
+		teleporterContractAddress common.Address,
+		fundedKey *ecdsa.PrivateKey,
+		expectSuccess bool) *types.Receipt
 }

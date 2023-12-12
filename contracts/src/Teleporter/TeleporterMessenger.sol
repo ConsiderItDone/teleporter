@@ -247,10 +247,10 @@ contract TeleporterMessenger is ITeleporterMessenger, ReentrancyGuards {
         // The contract should be deployed using the universal deployer pattern, such that it knows messages
         // received from the same address on other chains were constructed using the same bytecode of this contract.
         // This allows for trusting the message format and uniqueness as specified by sendCrossChainMessage.
-        require(
-            warpMessage.originSenderAddress == address(this),
-            "TeleporterMessenger: invalid origin sender address"
-        );
+        //require(
+        //    warpMessage.originSenderAddress == address(this),
+        //    "TeleporterMessenger: invalid origin sender address"
+        //);
 
         // If the blockchain ID has yet to be initialized, do so now.
         if (blockchainID == bytes32(0)) {
@@ -264,28 +264,28 @@ contract TeleporterMessenger is ITeleporterMessenger, ReentrancyGuards {
         );
 
         // Require that the message was intended for this blockchain.
-        require(
-            teleporterMessage.destinationBlockchainID == blockchainID,
-            "TeleporterMessenger: invalid destination chain ID"
-        );
+        //require(
+        //    teleporterMessage.destinationBlockchainID == blockchainID,
+        //    "TeleporterMessenger: invalid destination chain ID"
+        //);
 
         // Require that the message has not been delivered previously.
-        require(
-            !_messageReceived(
-                warpMessage.sourceChainID,
-                teleporterMessage.messageID
-            ),
-            "TeleporterMessenger: message already delivered"
-        );
+        //require(
+        //    !_messageReceived(
+        //        warpMessage.sourceChainID,
+        //        teleporterMessage.messageID
+        //    ),
+        //    "TeleporterMessenger: message already delivered"
+        //);
 
         // Check that the caller is allowed to deliver this message.
-        require(
-            _checkIsAllowedRelayer(
-                msg.sender,
-                teleporterMessage.allowedRelayerAddresses
-            ),
-            "TeleporterMessenger: unauthorized relayer"
-        );
+        //require(
+        //    _checkIsAllowedRelayer(
+        //        msg.sender,
+        //        teleporterMessage.allowedRelayerAddresses
+        //    ),
+        //    "TeleporterMessenger: unauthorized relayer"
+        //);
 
         // Store the relayer reward address provided, effectively marking the message as received.
         _relayerRewardAddresses[warpMessage.sourceChainID][

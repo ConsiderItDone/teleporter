@@ -34,3 +34,13 @@ func (n *LocalNetwork) RelayMessage(ctx context.Context,
 	expectSuccess bool) *types.Receipt {
 	return localUtils.RelayMessage(ctx, sourceReceipt, source, destination, expectSuccess)
 }
+
+func (n *LocalNetwork) RelayMessageWithAddr(ctx context.Context,
+	sourceReceipt *types.Receipt,
+	source utils.SubnetTestInfo,
+	destination utils.SubnetTestInfo,
+	teleporterContractAddress common.Address,
+	fundedKey *ecdsa.PrivateKey,
+	expectSuccess bool) *types.Receipt {
+	return localUtils.RelayMessageWithAddr(ctx, sourceReceipt, source, destination, teleporterContractAddress, fundedKey, expectSuccess)
+}
