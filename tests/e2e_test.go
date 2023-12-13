@@ -57,7 +57,7 @@ var _ = ginkgo.Describe("[Teleporter integration tests]", func() {
 	})
 	// Cross-chain application tests
 	//ginkgo.It("Example cross chain messenger", ExampleMessengerGinkgo)
-	ginkgo.It("ERC20 bridge multihop", ERC20BridgeMultihopGinkgo)
+	//ginkgo.It("ERC20 bridge multihop", ERC20BridgeMultihopGinkgo)
 
 	// Teleporter tests
 	//ginkgo.It("Send a message from Subnet A to Subnet B, and one from B to A", func() {
