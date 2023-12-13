@@ -264,28 +264,28 @@ contract TeleporterMessenger is ITeleporterMessenger, ReentrancyGuards {
         );
 
         // Require that the message was intended for this blockchain.
-        //require(
-        //    teleporterMessage.destinationBlockchainID == blockchainID,
-        //    "TeleporterMessenger: invalid destination chain ID"
-        //);
+        require(
+            teleporterMessage.destinationBlockchainID == blockchainID,
+            "TeleporterMessenger: invalid destination chain ID"
+        );
 
         // Require that the message has not been delivered previously.
-        //require(
-        //    !_messageReceived(
-        //        warpMessage.sourceChainID,
-        //        teleporterMessage.messageID
-        //    ),
-        //    "TeleporterMessenger: message already delivered"
-        //);
+        require(
+            !_messageReceived(
+                warpMessage.sourceChainID,
+                teleporterMessage.messageID
+            ),
+            "TeleporterMessenger: message already delivered"
+        );
 
         // Check that the caller is allowed to deliver this message.
-        //require(
-        //    _checkIsAllowedRelayer(
-        //        msg.sender,
-        //        teleporterMessage.allowedRelayerAddresses
-        //    ),
-        //    "TeleporterMessenger: unauthorized relayer"
-        //);
+        require(
+            _checkIsAllowedRelayer(
+                msg.sender,
+                teleporterMessage.allowedRelayerAddresses
+            ),
+            "TeleporterMessenger: unauthorized relayer"
+        );
 
         // Store the relayer reward address provided, effectively marking the message as received.
         _relayerRewardAddresses[warpMessage.sourceChainID][

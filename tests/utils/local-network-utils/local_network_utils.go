@@ -19,6 +19,7 @@ import (
 	"github.com/ava-labs/teleporter/tests/utils"
 	deploymentUtils "github.com/ava-labs/teleporter/utils/deployment-utils"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/log"
 
 	. "github.com/onsi/gomega"
@@ -43,11 +44,17 @@ func SetupProposerVM(ctx context.Context, fundedKey *ecdsa.PrivateKey, manager *
 }
 
 // Blocks until all validators specified in nodeURIs have reached the specified block height
-func WaitForAllValidatorsToAcceptBlock(ctx context.Context, nodeURIs []string, blockchainID ids.ID, height uint64) {
+func WaitForAllValidatorsToAcceptBlock(ctx context.Context, nodeURIs []string, blockchainID ids.ID, blockchainIDStr string, height uint64) {
 	cctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	for i, uri := range nodeURIs {
-		chainAWSURI := utils.HttpToWebsocketURI(uri, blockchainID.String())
+		var chainAWSURI string
+		if blockchainIDStr != "" {
+			chainAWSURI = utils.HttpToWebsocketURI(uri, blockchainIDStr)
+		} else {
+			chainAWSURI = utils.HttpToWebsocketURI(uri, blockchainID.String())
+		}
+
 		log.Info("Creating ethclient for blockchain", "blockchainID", blockchainID.String(), "wsURI", chainAWSURI)
 		client, err := ethclient.Dial(chainAWSURI)
 		Expect(err).Should(BeNil())
@@ -98,18 +105,37 @@ func ConstructSignedWarpMessageBytes(
 	// Loop over each client on chain A to ensure they all have time to accept the block.
 	// Note: if we did not confirm this here, the next stage could be racy since it assumes every node
 	// has accepted the block.
-	//WaitForAllValidatorsToAcceptBlock(ctx, source.ChainNodeURIs, source.BlockchainID, sourceReceipt.BlockNumber.Uint64())
+	WaitForAllValidatorsToAcceptBlock(ctx, source.ChainNodeURIs, source.BlockchainID, source.BlockchainIDStr, sourceReceipt.BlockNumber.Uint64())
 
 	// Get the aggregate signature for the Warp message
 	log.Info("Fetching aggregate signature from the source chain validators")
-	warpClient, err := warpBackend.NewClient(source.ChainNodeURIs[0], source.BlockchainID.String())
-	Expect(err).Should(BeNil())
-	signedWarpMessageBytes, err := warpClient.GetMessageAggregateSignature(
-		ctx, unsignedWarpMessageID, params.WarpQuorumDenominator,
-	)
-	Expect(err).Should(BeNil())
+	if source.BlockchainIDStr == "C" {
+		var (
+			res hexutil.Bytes
+			err error
+		)
+		err = source.ChainRPCClient.Client().CallContext(ctx, &res, "warp_getMessageAggregateSignature", unsignedWarpMessageID, params.WarpQuorumDenominator, "evm")
+		Expect(err).Should(BeNil())
+		return res
+	} else {
+		var (
+			warpClient warpBackend.Client
+			err        error
+		)
+		if source.BlockchainIDStr != "" {
+			warpClient, err = warpBackend.NewClient(source.ChainNodeURIs[0], source.BlockchainIDStr)
+		} else {
+			warpClient, err = warpBackend.NewClient(source.ChainNodeURIs[0], source.BlockchainID.String())
+		}
+		Expect(err).Should(BeNil())
 
-	return signedWarpMessageBytes
+		signedWarpMessageBytes, err := warpClient.GetMessageAggregateSignature(
+			ctx, unsignedWarpMessageID, params.WarpQuorumDenominator,
+		)
+		Expect(err).Should(BeNil())
+
+		return signedWarpMessageBytes
+	}
 }
 
 // Constructs the aggregate signature, packs the Teleporter message, and relays to the destination

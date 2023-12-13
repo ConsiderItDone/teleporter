@@ -40,6 +40,7 @@ var (
 type SubnetTestInfo struct {
 	SubnetID                  ids.ID
 	BlockchainID              ids.ID
+	BlockchainIDStr           string
 	ChainNodeURIs             []string
 	ChainWSClient             ethclient.Client
 	ChainRPCClient            ethclient.Client

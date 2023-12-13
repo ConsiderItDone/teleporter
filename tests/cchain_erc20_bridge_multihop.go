@@ -8,11 +8,12 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanchego/ids"
-	"github.com/ava-labs/avalanchego/utils/constants"
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ava-labs/subnet-evm/ethclient"
+	"github.com/ava-labs/subnet-evm/interfaces"
 	"github.com/ava-labs/subnet-evm/rpc"
+	"github.com/ava-labs/subnet-evm/x/warp"
 	bridgetoken "github.com/ava-labs/teleporter/abi-bindings/go/CrossChainApplications/ERC20Bridge/BridgeToken"
 	erc20bridge "github.com/ava-labs/teleporter/abi-bindings/go/CrossChainApplications/ERC20Bridge/ERC20Bridge"
 	teleportermessenger "github.com/ava-labs/teleporter/abi-bindings/go/Teleporter/TeleporterMessenger"
@@ -48,6 +49,13 @@ func CChainERC20BridgeMultihop(network network.Network) {
 	cethclient := ethclient.NewClient(crpcconn1)
 	wethclient := ethclient.NewClient(crpcconn2)
 
+	getBlockchainIDCallData, err := warp.PackGetBlockchainID()
+	Expect(err).Should(BeNil())
+	rawCChainBlockchainID, err := cethclient.CallContract(ctx, interfaces.CallMsg{To: &warp.Module.Address, Data: getBlockchainIDCallData}, nil)
+	Expect(err).Should(BeNil())
+	cchainBlockchainID, err := ids.ToID(rawCChainBlockchainID)
+	Expect(err).Should(BeNil())
+
 	cchainid, err := cethclient.ChainID(ctx)
 	Expect(err).Should(BeNil())
 
@@ -77,7 +85,8 @@ func CChainERC20BridgeMultihop(network network.Network) {
 
 	cchainInfo = utils.SubnetTestInfo{
 		SubnetID:                  ids.Empty,
-		BlockchainID:              constants.EVMID,
+		BlockchainID:              cchainBlockchainID,
+		BlockchainIDStr:           "C",
 		ChainNodeURIs:             subnets[1].ChainNodeURIs,
 		ChainWSClient:             wethclient,
 		ChainRPCClient:            cethclient,
