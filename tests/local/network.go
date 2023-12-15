@@ -13,11 +13,11 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/coreth/params"
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ava-labs/subnet-evm/ethclient"
 	subnetEvmInterfaces "github.com/ava-labs/subnet-evm/interfaces"
-	"github.com/ava-labs/subnet-evm/params"
 	"github.com/ava-labs/subnet-evm/plugin/evm"
 	"github.com/ava-labs/subnet-evm/rpc"
 	"github.com/ava-labs/subnet-evm/tests/utils/runner"
@@ -488,19 +488,15 @@ func (n *localNetwork) ConstructSignedWarpMessageBytes(
 
 	// Get the aggregate signature for the Warp message
 	log.Info("Fetching aggregate signature from the source chain validators")
+	var warpClient warpBackend.Client
 	if source.SubnetID == ids.Empty {
-		var (
-			res hexutil.Bytes
-			err error
-		)
-		err = source.RPCClient.Client().CallContext(ctx, &res, "warp_getMessageAggregateSignature", unsignedWarpMessageID, params.WarpQuorumDenominator, "")
-		Expect(err).Should(BeNil())
-		return res
+		warpClient, err = warpBackend.NewClient(source.NodeURIs[0], "C")
+	} else {
+		warpClient, err = warpBackend.NewClient(source.NodeURIs[0], source.BlockchainID.String())
 	}
-	warpClient, err := warpBackend.NewClient(source.NodeURIs[0], source.BlockchainID.String())
 	Expect(err).Should(BeNil())
 	signedWarpMessageBytes, err := warpClient.GetMessageAggregateSignature(
-		ctx, unsignedWarpMessageID, params.WarpQuorumDenominator,
+		ctx, unsignedWarpMessageID, params.WarpQuorumDenominator, "",
 	)
 	Expect(err).Should(BeNil())
 
