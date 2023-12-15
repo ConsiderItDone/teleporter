@@ -114,7 +114,7 @@ func ConstructSignedWarpMessageBytes(
 			res hexutil.Bytes
 			err error
 		)
-		err = source.ChainRPCClient.Client().CallContext(ctx, &res, "warp_getMessageAggregateSignature", unsignedWarpMessageID, params.WarpQuorumDenominator, "evm")
+		err = source.ChainRPCClient.Client().CallContext(ctx, &res, "warp_getMessageAggregateSignature", unsignedWarpMessageID, params.WarpQuorumDenominator, "")
 		Expect(err).Should(BeNil())
 		return res
 	} else {
