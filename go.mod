@@ -146,3 +146,5 @@ require (
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/ava-labs/avalanche-network-runner => github.com/n0cte/avalanche-network-runner v1.7.4-0.20231214102129-ef57bdc8d7be

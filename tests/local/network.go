@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"strings"
 	"time"
 
 	runner_sdk "github.com/ava-labs/avalanche-network-runner/client"
@@ -243,6 +244,34 @@ func (n *localNetwork) deployTeleporterContracts(
 
 	ctx := context.Background()
 
+	crpcconn1, err := rpc.Dial(fmt.Sprintf("%s/ext/bc/C/rpc", subnetsInfoList[1].NodeURIs[0]))
+	Expect(err).Should(BeNil())
+
+	crpcconn2, err := rpc.Dial(fmt.Sprintf("ws://%s/ext/bc/C/ws", strings.TrimPrefix(subnetsInfoList[1].NodeURIs[0], "http://")))
+	Expect(err).Should(BeNil())
+
+	cethclient := ethclient.NewClient(crpcconn1)
+	wethclient := ethclient.NewClient(crpcconn2)
+
+	getBlockchainIDCallData, err := warp.PackGetBlockchainID()
+	Expect(err).Should(BeNil())
+	rawCChainBlockchainID, err := cethclient.CallContract(ctx, subnetEvmInterfaces.CallMsg{To: &warp.Module.Address, Data: getBlockchainIDCallData}, nil)
+	Expect(err).Should(BeNil())
+	cchainBlockchainID, err := ids.ToID(rawCChainBlockchainID)
+	Expect(err).Should(BeNil())
+
+	cchainid, err := cethclient.ChainID(ctx)
+	Expect(err).Should(BeNil())
+
+	subnetsInfoList = append(subnetsInfoList, interfaces.SubnetTestInfo{
+		SubnetID:     ids.Empty,
+		BlockchainID: cchainBlockchainID,
+		NodeURIs:     subnetsInfoList[1].NodeURIs,
+		WSClient:     wethclient,
+		RPCClient:    cethclient,
+		EVMChainID:   cchainid,
+	})
+
 	for _, subnetInfo := range subnetsInfoList {
 		// Fund the deployer address
 		{
@@ -280,7 +309,9 @@ func (n *localNetwork) deployTeleporterContracts(
 			n.teleporterContractAddress, subnetInfo.RPCClient,
 		)
 		Expect(err).Should(BeNil())
-		n.subnetsInfo[subnetInfo.SubnetID].TeleporterMessenger = teleporterMessenger
+		if subnetInfo.SubnetID != ids.Empty {
+			n.subnetsInfo[subnetInfo.SubnetID].TeleporterMessenger = teleporterMessenger
+		}
 		log.Info("Finished deploying Teleporter contract", "blockchainID", subnetInfo.BlockchainID.Hex())
 	}
 	log.Info("Deployed Teleporter contracts to all subnets")
@@ -457,6 +488,15 @@ func (n *localNetwork) ConstructSignedWarpMessageBytes(
 
 	// Get the aggregate signature for the Warp message
 	log.Info("Fetching aggregate signature from the source chain validators")
+	if source.SubnetID == ids.Empty {
+		var (
+			res hexutil.Bytes
+			err error
+		)
+		err = source.RPCClient.Client().CallContext(ctx, &res, "warp_getMessageAggregateSignature", unsignedWarpMessageID, params.WarpQuorumDenominator, "")
+		Expect(err).Should(BeNil())
+		return res
+	}
 	warpClient, err := warpBackend.NewClient(source.NodeURIs[0], source.BlockchainID.String())
 	Expect(err).Should(BeNil())
 	signedWarpMessageBytes, err := warpClient.GetMessageAggregateSignature(
