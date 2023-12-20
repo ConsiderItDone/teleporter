@@ -13,6 +13,7 @@ import (
 	"github.com/ava-labs/avalanche-network-runner/rpcpb"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/utils/logging"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/coreth/params"
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
 	"github.com/ava-labs/subnet-evm/core/types"
@@ -253,19 +254,26 @@ func (n *localNetwork) deployTeleporterContracts(
 	cethclient := ethclient.NewClient(crpcconn1)
 	wethclient := ethclient.NewClient(crpcconn2)
 
-	getBlockchainIDCallData, err := warp.PackGetBlockchainID()
+	allblockchains, err := platformvm.NewClient(subnetsInfoList[1].NodeURIs[0]).GetBlockchains(context.Background())
 	Expect(err).Should(BeNil())
-	rawCChainBlockchainID, err := cethclient.CallContract(ctx, subnetEvmInterfaces.CallMsg{To: &warp.Module.Address, Data: getBlockchainIDCallData}, nil)
-	Expect(err).Should(BeNil())
-	cchainBlockchainID, err := ids.ToID(rawCChainBlockchainID)
-	Expect(err).Should(BeNil())
+	var (
+		cchainDataInfo      platformvm.APIBlockchain
+		cchainDataInfoFound bool
+	)
+	for _, bcInfo := range allblockchains {
+		if bcInfo.Name == "C-Chain" {
+			cchainDataInfo = bcInfo
+			cchainDataInfoFound = true
+		}
+	}
+	Expect(cchainDataInfoFound).Should(BeTrue())
 
 	cchainid, err := cethclient.ChainID(ctx)
 	Expect(err).Should(BeNil())
 
 	subnetsInfoList = append(subnetsInfoList, interfaces.SubnetTestInfo{
-		SubnetID:     ids.Empty,
-		BlockchainID: cchainBlockchainID,
+		SubnetID:     cchainDataInfo.SubnetID,
+		BlockchainID: cchainDataInfo.ID,
 		NodeURIs:     subnetsInfoList[1].NodeURIs,
 		WSClient:     wethclient,
 		RPCClient:    cethclient,
@@ -495,9 +503,17 @@ func (n *localNetwork) ConstructSignedWarpMessageBytes(
 		warpClient, err = warpBackend.NewClient(source.NodeURIs[0], source.BlockchainID.String())
 	}
 	Expect(err).Should(BeNil())
-	signedWarpMessageBytes, err := warpClient.GetMessageAggregateSignature(
-		ctx, unsignedWarpMessageID, params.WarpQuorumDenominator, "",
-	)
+
+	var signedWarpMessageBytes []byte
+	if source.SubnetID == ids.Empty {
+		signedWarpMessageBytes, err = warpClient.GetMessageAggregateSignature(
+			ctx, unsignedWarpMessageID, params.WarpQuorumDenominator, destination.SubnetID.String(),
+		)
+	} else {
+		signedWarpMessageBytes, err = warpClient.GetMessageAggregateSignature(
+			ctx, unsignedWarpMessageID, params.WarpQuorumDenominator, "",
+		)
+	}
 	Expect(err).Should(BeNil())
 
 	return signedWarpMessageBytes

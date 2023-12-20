@@ -7,12 +7,11 @@ import (
 	"strings"
 
 	"github.com/ava-labs/avalanchego/ids"
+	"github.com/ava-labs/avalanchego/vms/platformvm"
 	"github.com/ava-labs/subnet-evm/accounts/abi/bind"
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ava-labs/subnet-evm/ethclient"
-	subnetEvmInterfaces "github.com/ava-labs/subnet-evm/interfaces"
 	"github.com/ava-labs/subnet-evm/rpc"
-	"github.com/ava-labs/subnet-evm/x/warp"
 	bridgetoken "github.com/ava-labs/teleporter/abi-bindings/go/CrossChainApplications/ERC20Bridge/BridgeToken"
 	teleportermessenger "github.com/ava-labs/teleporter/abi-bindings/go/Teleporter/TeleporterMessenger"
 	teleporterregistry "github.com/ava-labs/teleporter/abi-bindings/go/Teleporter/upgrades/TeleporterRegistry"
@@ -29,6 +28,20 @@ func ERC20CChainBridgeMultihop(network interfaces.Network) {
 	fundedAddress, fundedKey := network.GetFundedAccountInfo()
 	ctx := context.Background()
 
+	allblockchains, err := platformvm.NewClient(cchainInfo.NodeURIs[0]).GetBlockchains(context.Background())
+	Expect(err).Should(BeNil())
+	var (
+		cchainDataInfo      platformvm.APIBlockchain
+		cchainDataInfoFound bool
+	)
+	for _, bcInfo := range allblockchains {
+		if bcInfo.Name == "C-Chain" {
+			cchainDataInfo = bcInfo
+			cchainDataInfoFound = true
+		}
+	}
+	Expect(cchainDataInfoFound).Should(BeTrue())
+
 	crpcconn1, err := rpc.Dial(fmt.Sprintf("%s/ext/bc/C/rpc", cchainInfo.NodeURIs[0]))
 	Expect(err).Should(BeNil())
 
@@ -37,13 +50,6 @@ func ERC20CChainBridgeMultihop(network interfaces.Network) {
 
 	cethclient := ethclient.NewClient(crpcconn1)
 	wethclient := ethclient.NewClient(crpcconn2)
-
-	getBlockchainIDCallData, err := warp.PackGetBlockchainID()
-	Expect(err).Should(BeNil())
-	rawCChainBlockchainID, err := cethclient.CallContract(ctx, subnetEvmInterfaces.CallMsg{To: &warp.Module.Address, Data: getBlockchainIDCallData}, nil)
-	Expect(err).Should(BeNil())
-	cchainBlockchainID, err := ids.ToID(rawCChainBlockchainID)
-	Expect(err).Should(BeNil())
 
 	cchainid, err := cethclient.ChainID(ctx)
 	Expect(err).Should(BeNil())
@@ -81,10 +87,9 @@ func ERC20CChainBridgeMultihop(network interfaces.Network) {
 	log.Info("Deployed TeleporterRegistry contract to subnet", ids.Empty.Hex(),
 		"Deploy address", teleporterRegistryAddress.Hex())
 
-	Expect(err).Should(BeNil())
 	cchainInfo = interfaces.SubnetTestInfo{
-		SubnetID:                  ids.Empty,
-		BlockchainID:              cchainBlockchainID,
+		SubnetID:                  cchainDataInfo.SubnetID,
+		BlockchainID:              cchainDataInfo.ID,
 		NodeURIs:                  cchainInfo.NodeURIs,
 		WSClient:                  wethclient,
 		RPCClient:                 cethclient,
