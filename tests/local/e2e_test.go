@@ -69,8 +69,14 @@ var _ = ginkgo.Describe("[Teleporter integration tests]", func() {
 	//ginkgo.It("ERC20 bridge multihop", func() {
 	//	flows.ERC20BridgeMultihop(localNetworkInstance)
 	//})
+	ginkgo.It("ERC20 C Chain(sender) bridge multihop", func() {
+		flows.ERC20CChainFromBridgeMultihop(localNetworkInstance)
+	})
 	ginkgo.It("ERC20 C Chain bridge multihop", func() {
 		flows.ERC20CChainBridgeMultihop(localNetworkInstance)
+	})
+	ginkgo.It("ERC20 C Chain(recepient) bridge multihop", func() {
+		flows.ERC20CChainToBridgeMultihop(localNetworkInstance)
 	})
 
 	// Teleporter tests
