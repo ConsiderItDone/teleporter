@@ -28,7 +28,7 @@ export GO_VERSION=${GO_VERSION:-$(getDepVersion go).$GO_PATCH_VERSION}
 # Don't export them as they're used in the context of other calls
 AVALANCHEGO_VERSION="v1.10.18-rc.1"
 GINKGO_VERSION=${GINKGO_VERSION:-$(getDepVersion github.com/onsi/ginkgo/v2)}
-SUBNET_EVM_VERSION=${SUBNET_EVM_VERSION:-$(getDepVersion github.com/ava-labs/subnet-evm)}
+SUBNET_EVM_VERSION="ibc"
 
 # Set golangci-lint version
 GOLANGCI_LINT_VERSION=${GOLANGCI_LINT_VERSION:-'v1.55'}
