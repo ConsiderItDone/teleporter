@@ -6,3 +6,6 @@ solc_version = '0.8.18'
 test = 'tests'
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
+
+[rpc_endpoints]
+eth_rpc_url = "${ETH_RPC_URL}"
