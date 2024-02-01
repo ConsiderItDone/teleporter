@@ -26,7 +26,7 @@ AWM_RELAYER_VERSION=${AWM_RELAYER_VERSION:-'v0.2.4'}
 export GO_VERSION=${GO_VERSION:-$(getDepVersion go).$GO_PATCH_VERSION}
 
 # Don't export them as they're used in the context of other calls
-AVALANCHEGO_VERSION="v1.10.18-rc.1"
+AVALANCHEGO_VERSION="v1.10.18"
 GINKGO_VERSION=${GINKGO_VERSION:-$(getDepVersion github.com/onsi/ginkgo/v2)}
 SUBNET_EVM_VERSION="ibc_rebase"
 
