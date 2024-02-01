@@ -12,6 +12,7 @@
     "istanbulBlock": 0,
     "muirGlacierBlock": 0,
     "subnetEVMTimestamp": 0,
+    "durangoTimestamp": 0,
     "dUpgradeTimestamp": 0,
     "feeConfig": {
       "gasLimit": 20000000,
@@ -24,6 +25,9 @@
       "blockGasCostStep": 500000
     },
     "warpConfig": {
+      "blockTimestamp": 0
+    },
+    "ibcConfig": {
       "blockTimestamp": 0
     },
     "contractNativeMinterConfig": {
