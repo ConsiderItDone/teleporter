@@ -10,6 +10,7 @@ import (
 	"github.com/ava-labs/subnet-evm/core/types"
 	bridgetoken "github.com/ava-labs/teleporter/abi-bindings/go/CrossChainApplications/ERC20Bridge/BridgeToken"
 	erc20bridge "github.com/ava-labs/teleporter/abi-bindings/go/CrossChainApplications/ERC20Bridge/ERC20Bridge"
+	ics20bridge "github.com/ava-labs/teleporter/abi-bindings/go/CrossChainApplications/ERC20Bridge/ICS20Bridge"
 	teleportermessenger "github.com/ava-labs/teleporter/abi-bindings/go/Teleporter/TeleporterMessenger"
 	"github.com/ava-labs/teleporter/tests/interfaces"
 	"github.com/ava-labs/teleporter/tests/utils"
@@ -426,6 +427,57 @@ func bridgeToken(
 		primaryFeeAmount,
 		secondaryFeeAmount,
 	)
+	Expect(err).Should(BeNil())
+
+	// Wait for the transaction to be mined
+	receipt, err := bind.WaitMined(ctx, source.RPCClient, tx)
+	Expect(err).Should(BeNil())
+	Expect(receipt.Status).Should(Equal(types.ReceiptStatusSuccessful))
+
+	event, err := utils.GetEventFromLogs(receipt.Logs, teleporterMessenger.ParseSendCrossChainMessage)
+	Expect(err).Should(BeNil())
+	if isNative {
+		Expect(event.DestinationBlockchainID[:]).Should(Equal(destinationChainID[:]))
+	} else {
+		Expect(event.DestinationBlockchainID[:]).Should(Equal(nativeTokenChainID[:]))
+	}
+
+	return receipt, event.Message.MessageID
+}
+
+func isc20bridgeToken(
+	ctx context.Context,
+	source interfaces.SubnetTestInfo,
+	destinationChainID ids.ID,
+	destinationBridgeAddress common.Address,
+	token common.Address,
+	recipient common.Address,
+	totalAmount *big.Int,
+	primaryFeeAmount *big.Int,
+	secondaryFeeAmount *big.Int,
+	fundedAddress common.Address,
+	fundedKey *ecdsa.PrivateKey,
+	transactor *ics20bridge.ICS20Bridge,
+	isNative bool,
+	nativeTokenChainID ids.ID,
+	teleporterMessenger *teleportermessenger.TeleporterMessenger,
+) (*types.Receipt, *big.Int) {
+	opts, err := bind.NewKeyedTransactorWithChainID(fundedKey, source.EVMChainID)
+	Expect(err).Should(BeNil())
+
+	tx, err := transactor.BridgeTokens(
+		opts,
+		destinationChainID,
+		destinationBridgeAddress,
+		token,
+		recipient,
+		totalAmount,
+		primaryFeeAmount,
+		secondaryFeeAmount,
+	)
+	Expect(err).Should(HaveOccurred())
+	return nil, nil
+
 	Expect(err).Should(BeNil())
 
 	// Wait for the transaction to be mined

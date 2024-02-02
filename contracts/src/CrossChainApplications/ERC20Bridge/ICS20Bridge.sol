@@ -71,7 +71,8 @@ contract ICS20Bridge is
     uint256 public constant MINT_BRIDGE_TOKENS_REQUIRED_GAS = 200_000;
     uint256 public constant TRANSFER_BRIDGE_TOKENS_REQUIRED_GAS = 300_000;
 
-    address public ibcAddress;
+    address public constant IBC_PRECOMPILE_ADDRESS = 0x0300000000000000000000000000000000000002;
+
     string public ibcChannel;
 
     /**
@@ -80,12 +81,10 @@ contract ICS20Bridge is
      */
     constructor(
         address teleporterRegistryAddress,
-        address ibcAddr,
         string memory ibcCh
     ) TeleporterOwnerUpgradeable(teleporterRegistryAddress) {
         currentBlockchainID = IWarpMessenger(WARP_PRECOMPILE_ADDRESS)
             .getBlockchainID();
-        ibcAddress = ibcAddr;
         ibcChannel = ibcCh;
     }
 
@@ -173,7 +172,7 @@ contract ICS20Bridge is
             "ERC20Bridge: insufficient adjusted amount"
         );
 
-        if (ibcAddress != address(0)) {
+        {
             Height memory height = Height({revisionNumber: 0, revisionHeight: 0});
             FungibleTokenPacketData memory data = FungibleTokenPacketData({
                 denom: IERC20Metadata(tokenContractAddress).symbol(),
@@ -182,7 +181,7 @@ contract ICS20Bridge is
                 receiver: abi.encodePacked(recipient),
                 memo: bytes("")
             });
-            IIBC(ibcAddress).sendPacket(0, "transfer", ibcChannel, height, 0, abi.encode(data));
+            IIBC(IBC_PRECOMPILE_ADDRESS).sendPacket(0, "transfer", ibcChannel, height, 0, abi.encode(data));
         }
 
         return

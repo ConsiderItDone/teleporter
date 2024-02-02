@@ -30,6 +30,7 @@ import (
 	"github.com/ava-labs/subnet-evm/rpc"
 	"github.com/ava-labs/subnet-evm/x/warp"
 	erc20bridge "github.com/ava-labs/teleporter/abi-bindings/go/CrossChainApplications/ERC20Bridge/ERC20Bridge"
+	ics20bridge "github.com/ava-labs/teleporter/abi-bindings/go/CrossChainApplications/ERC20Bridge/ICS20Bridge"
 	examplecrosschainmessenger "github.com/ava-labs/teleporter/abi-bindings/go/CrossChainApplications/ExampleMessenger/ExampleCrossChainMessenger"
 	blockhashpublisher "github.com/ava-labs/teleporter/abi-bindings/go/CrossChainApplications/VerifiedBlockHash/BlockHashPublisher"
 	blockhashreceiver "github.com/ava-labs/teleporter/abi-bindings/go/CrossChainApplications/VerifiedBlockHash/BlockHashReceiver"
@@ -633,6 +634,30 @@ func DeployERC20Bridge(
 	log.Info("Deployed ERC20 Bridge contract", "address", address.Hex(), "txHash", tx.Hash().Hex())
 
 	return address, erc20Bridge
+}
+
+func DeployICS20Bridge(
+	ctx context.Context,
+	senderKey *ecdsa.PrivateKey,
+	source interfaces.SubnetTestInfo,
+	channel string,
+) (common.Address, *ics20bridge.ICS20Bridge) {
+	opts, err := bind.NewKeyedTransactorWithChainID(senderKey, source.EVMChainID)
+	Expect(err).Should(BeNil())
+
+	address, tx, ics20bridge, err := ics20bridge.DeployICS20Bridge(
+		opts, source.RPCClient, source.TeleporterRegistryAddress, channel,
+	)
+	Expect(err).Should(BeNil())
+
+	// Wait for the transaction to be mined
+	receipt, err := bind.WaitMined(ctx, source.RPCClient, tx)
+	Expect(err).Should(BeNil())
+	Expect(receipt.Status).Should(Equal(types.ReceiptStatusSuccessful))
+
+	log.Info("Deployed ERC20 Bridge contract", "address", address.Hex(), "txHash", tx.Hash().Hex())
+
+	return address, ics20bridge
 }
 
 func DeployBlockHashPublisher(

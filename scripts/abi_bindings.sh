@@ -15,7 +15,7 @@ source $TELEPORTER_PATH/scripts/versions.sh
 
 setARCH
 
-DEFAULT_CONTRACT_LIST="TeleporterMessenger ERC20Bridge ExampleCrossChainMessenger BlockHashPublisher BlockHashReceiver BridgeToken TeleporterRegistry NativeTokenSource NativeTokenDestination ERC20TokenSource ExampleERC20"
+DEFAULT_CONTRACT_LIST="TeleporterMessenger ICS20Bridge ERC20Bridge ExampleCrossChainMessenger BlockHashPublisher BlockHashReceiver BridgeToken TeleporterRegistry NativeTokenSource NativeTokenDestination ERC20TokenSource ExampleERC20"
 
 CONTRACT_LIST=
 HELP=
@@ -44,7 +44,7 @@ if ! command -v forge &> /dev/null; then
 fi
 
 echo "Building subnet-evm abigen"
-go install github.com/ava-labs/subnet-evm/cmd/abigen@${SUBNET_EVM_VERSION}
+#go install github.com/ConsiderItDone/subnet-evm-private/cmd/abigen@${SUBNET_EVM_VERSION}
 
 # Force recompile of all contracts to prevent against using previous
 # compilations that did not generate new ABI files.
