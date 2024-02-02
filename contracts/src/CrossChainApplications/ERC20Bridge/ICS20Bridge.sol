@@ -5,6 +5,7 @@
 
 pragma solidity 0.8.18;
 
+import {FungibleTokenPacketData, Height, IIBC} from "../IBC/IIBC.sol";
 import {IERC20Bridge} from "./IERC20Bridge.sol";
 import {BridgeToken} from "./BridgeToken.sol";
 import {ITeleporterMessenger, TeleporterMessageInput, TeleporterFeeInfo} from "../../Teleporter/ITeleporterMessenger.sol";
@@ -12,6 +13,7 @@ import {SafeERC20TransferFrom} from "../../Teleporter/SafeERC20TransferFrom.sol"
 import {TeleporterOwnerUpgradeable} from "../../Teleporter/upgrades/TeleporterOwnerUpgradeable.sol";
 import {IWarpMessenger} from "@subnet-evm-contracts/interfaces/IWarpMessenger.sol";
 import {IERC20, ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
@@ -21,7 +23,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.
  * This implementation uses the {BridgeToken} contract to represent tokens on this chain, and uses
  * {ITeleporterMessenger} to send and receive messages to other chains.
  */
-contract ERC20Bridge is
+contract ICS20Bridge is
     IERC20Bridge,
     ReentrancyGuard,
     TeleporterOwnerUpgradeable
@@ -69,15 +71,22 @@ contract ERC20Bridge is
     uint256 public constant MINT_BRIDGE_TOKENS_REQUIRED_GAS = 200_000;
     uint256 public constant TRANSFER_BRIDGE_TOKENS_REQUIRED_GAS = 300_000;
 
+    address public ibcAddress;
+    string public ibcChannel;
+
     /**
      * @dev Initializes the Teleporter Messenger used for sending and receiving messages,
      * and initializes the current chain ID.
      */
     constructor(
-        address teleporterRegistryAddress
+        address teleporterRegistryAddress,
+        address ibcAddr,
+        string memory ibcCh
     ) TeleporterOwnerUpgradeable(teleporterRegistryAddress) {
         currentBlockchainID = IWarpMessenger(WARP_PRECOMPILE_ADDRESS)
             .getBlockchainID();
+        ibcAddress = ibcAddr;
+        ibcChannel = ibcCh;
     }
 
     /**
@@ -163,6 +172,18 @@ contract ERC20Bridge is
             adjustedAmount > primaryFeeAmount,
             "ERC20Bridge: insufficient adjusted amount"
         );
+
+        if (ibcAddress != address(0)) {
+            Height memory height = Height({revisionNumber: 0, revisionHeight: 0});
+            FungibleTokenPacketData memory data = FungibleTokenPacketData({
+                denom: IERC20Metadata(tokenContractAddress).symbol(),
+                amount: totalAmount,
+                sender: abi.encodePacked(msg.sender),
+                receiver: abi.encodePacked(recipient),
+                memo: bytes("")
+            });
+            IIBC(ibcAddress).sendPacket(0, "transfer", ibcChannel, height, 0, abi.encode(data));
+        }
 
         return
             _processNativeTokenTransfer({

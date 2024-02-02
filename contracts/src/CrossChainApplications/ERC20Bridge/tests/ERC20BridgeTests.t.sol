@@ -6,7 +6,6 @@
 pragma solidity 0.8.18;
 
 import {Test} from "forge-std/Test.sol";
-import {MockIBC} from "../../IBC/mocks/MockIBC.sol";
 import {ERC20Bridge, BridgeToken, IERC20, ERC20, TeleporterMessageInput, TeleporterFeeInfo, IWarpMessenger, ITeleporterMessenger} from "../ERC20Bridge.sol";
 import {TeleporterRegistry} from "../../../Teleporter/upgrades/TeleporterRegistry.sol";
 import {UnitTestMockERC20} from "../../../Mocks/UnitTestMockERC20.sol";
@@ -31,7 +30,6 @@ contract ERC20BridgeTest is Test {
     address private constant _DEFAULT_RECIPIENT =
         0xa4CEE7d1aF6aDdDD33E3b1cC680AB84fdf1b6d1d;
 
-    MockIBC public mockIbc;
     ERC20Bridge public erc20Bridge;
     UnitTestMockERC20 public mockERC20;
 
@@ -91,8 +89,7 @@ contract ERC20BridgeTest is Test {
             )
         );
 
-        mockIbc = new MockIBC();
-        erc20Bridge = new ERC20Bridge(MOCK_TELEPORTER_REGISTRY_ADDRESS, address(mockIbc), "");
+        erc20Bridge = new ERC20Bridge(MOCK_TELEPORTER_REGISTRY_ADDRESS);
         mockERC20 = new UnitTestMockERC20();
     }
 
@@ -396,8 +393,6 @@ contract ERC20BridgeTest is Test {
             primaryFeeAmount: feeAmount,
             secondaryFeeAmount: 0
         });
-
-        assertEq(mockIbc.getSendPacketCalled(), 1);
     }
 
     // Tests that "fee on transfer" ERC20 implementations are handled properly when
@@ -641,7 +636,7 @@ contract ERC20BridgeTest is Test {
         vm.expectRevert(
             "TeleporterUpgradeable: zero teleporter registry address"
         );
-        new ERC20Bridge(address(0), address(0), "");
+        new ERC20Bridge(address(0));
     }
 
     function _initMockTeleporterRegistry() internal {

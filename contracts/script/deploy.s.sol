@@ -26,7 +26,7 @@ contract Deploy is Script {
         }));
         TeleporterRegistry teleporterRegistry = new TeleporterRegistry(initialEntries);
 
-        ERC20Bridge erc20Bridge = new ERC20Bridge(address(teleporterRegistry), address(0), "");
+        ERC20Bridge erc20Bridge = new ERC20Bridge(address(teleporterRegistry));
 
         vm.stopBroadcast();
     }
