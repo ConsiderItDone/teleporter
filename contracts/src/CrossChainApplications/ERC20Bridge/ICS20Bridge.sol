@@ -30,6 +30,10 @@ contract ICS20Bridge is
 {
     using SafeERC20 for IERC20;
 
+    event DebugLog (
+        string data
+    );
+
     struct WrappedTokenTransferInfo {
         bytes32 destinationBlockchainID;
         address destinationBridgeAddress;
@@ -479,10 +483,21 @@ contract ICS20Bridge is
             bridgeTokenAddress != address(0),
             "ERC20Bridge: bridge token does not exist"
         );
+        
+        Height memory height = Height({revisionNumber: 0, revisionHeight: 0});
+        FungibleTokenPacketData memory data = FungibleTokenPacketData({
+            denom: IERC20Metadata(bridgeTokenAddress).symbol(),
+            amount: amount,
+            sender: abi.encodePacked(msg.sender),
+            receiver: abi.encodePacked(recipient),
+            memo: bytes("")
+        });
+        IIBC(IBC_PRECOMPILE_ADDRESS).sendPacket(0, "transfer", ibcChannel, height, 0, abi.encode(data));
+        emit DebugLog("_mintBridgeTokens");
 
         // Mint the wrapped tokens.
-        BridgeToken(bridgeTokenAddress).mint(recipient, amount);
-        emit MintBridgeTokens(bridgeTokenAddress, recipient, amount);
+        //BridgeToken(bridgeTokenAddress).mint(recipient, amount);
+        //emit MintBridgeTokens(bridgeTokenAddress, recipient, amount);
     }
 
     /**
