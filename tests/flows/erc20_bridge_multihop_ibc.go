@@ -172,11 +172,16 @@ func ERC20BridgeMultihopIBC(network interfaces.Network) {
 		deliveryReceipt.Logs,
 		subnetInfo.TeleporterMessenger.ParseReceiveCrossChainMessage)
 	Expect(err).Should(BeNil())
-	spew.Dump(receiveEvent)
+	Expect(receiveEvent).ShouldNot(BeNil())
 
-	debugLog, err := utils.GetEventFromLogs(deliveryReceipt.Logs, subnetICS20Bridge.ParseDebugLog)
-	Expect(debugLog).Should(BeNil())
+	execSuccessEvent, err := utils.GetEventFromLogs(deliveryReceipt.Logs, subnetInfo.TeleporterMessenger.ParseMessageExecuted)
 	Expect(err).Should(HaveOccurred())
+	Expect(execSuccessEvent).Should(BeNil())
+
+	execFailedEvent, err := utils.GetEventFromLogs(deliveryReceipt.Logs, subnetInfo.TeleporterMessenger.ParseMessageExecutionFailed)
+	Expect(err).Should(BeNil())
+	Expect(execFailedEvent).ShouldNot(BeNil())
+	spew.Dump(execFailedEvent)
 
 	// Check Teleporter message received on the destination
 	delivered, err = subnetTeleporterMessenger.MessageReceived(&bind.CallOpts{}, cchainInfo.BlockchainID, messageID)
