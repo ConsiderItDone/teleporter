@@ -171,13 +171,14 @@ func ERC20BridgeMultihop(network interfaces.Network) {
 	// Send a bridge transfer for the newly added token from subnet A to subnet B
 	totalAmount := big.NewInt(0).Mul(big.NewInt(1e18), big.NewInt(13))
 	primaryFeeAmount := big.NewInt(1e18)
-	receipt, messageID = bridgeToken(
+	receipt, messageID = ibcBridgeToken(
 		ctx,
 		subnetAInfo,
 		subnetBInfo.BlockchainID,
 		erc20BridgeAddressB,
 		nativeERC20Address,
 		fundedAddress,
+		"cosmosSOME_ADDR_HERE",
 		totalAmount,
 		primaryFeeAmount,
 		big.NewInt(0),
@@ -393,6 +394,56 @@ func submitCreateBridgeToken(
 	log.Info("Successfully SubmitCreateBridgeToken",
 		"txHash", tx.Hash().Hex(),
 		"messageID", event.Message.MessageID)
+
+	return receipt, event.Message.MessageID
+}
+
+func ibcBridgeToken(
+	ctx context.Context,
+	source interfaces.SubnetTestInfo,
+	destinationChainID ids.ID,
+	destinationBridgeAddress common.Address,
+	token common.Address,
+	recipient common.Address,
+	cosmosRecipient string,
+	totalAmount *big.Int,
+	primaryFeeAmount *big.Int,
+	secondaryFeeAmount *big.Int,
+	fundedAddress common.Address,
+	fundedKey *ecdsa.PrivateKey,
+	transactor *erc20bridge.ERC20Bridge,
+	isNative bool,
+	nativeTokenChainID ids.ID,
+	teleporterMessenger *teleportermessenger.TeleporterMessenger,
+) (*types.Receipt, *big.Int) {
+	opts, err := bind.NewKeyedTransactorWithChainID(fundedKey, source.EVMChainID)
+	Expect(err).Should(BeNil())
+
+	tx, err := transactor.IbcBridgeTokens(
+		opts,
+		destinationChainID,
+		destinationBridgeAddress,
+		token,
+		recipient,
+		cosmosRecipient,
+		totalAmount,
+		primaryFeeAmount,
+		secondaryFeeAmount,
+	)
+	Expect(err).Should(BeNil())
+
+	// Wait for the transaction to be mined
+	receipt, err := bind.WaitMined(ctx, source.RPCClient, tx)
+	Expect(err).Should(BeNil())
+	Expect(receipt.Status).Should(Equal(types.ReceiptStatusSuccessful))
+
+	event, err := utils.GetEventFromLogs(receipt.Logs, teleporterMessenger.ParseSendCrossChainMessage)
+	Expect(err).Should(BeNil())
+	if isNative {
+		Expect(event.DestinationBlockchainID[:]).Should(Equal(destinationChainID[:]))
+	} else {
+		Expect(event.DestinationBlockchainID[:]).Should(Equal(nativeTokenChainID[:]))
+	}
 
 	return receipt, event.Message.MessageID
 }

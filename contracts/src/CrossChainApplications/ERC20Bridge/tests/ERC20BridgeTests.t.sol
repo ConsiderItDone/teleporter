@@ -214,6 +214,7 @@ contract ERC20BridgeTest is Test {
                 message: erc20Bridge.encodeMintBridgeTokensData(
                     address(mockERC20),
                     _DEFAULT_RECIPIENT,
+                    "",
                     totalAmount
                 )
             });
@@ -329,6 +330,7 @@ contract ERC20BridgeTest is Test {
                 message: erc20Bridge.encodeMintBridgeTokensData(
                     address(mockERC20),
                     _DEFAULT_RECIPIENT,
+                    "",
                     bridgeAmount
                 )
             });
@@ -432,6 +434,7 @@ contract ERC20BridgeTest is Test {
                 message: erc20Bridge.encodeMintBridgeTokensData(
                     address(mockERC20),
                     _DEFAULT_RECIPIENT,
+                    "",
                     expectedBridgeAmount
                 )
             });
@@ -548,6 +551,7 @@ contract ERC20BridgeTest is Test {
         bytes memory message = erc20Bridge.encodeMintBridgeTokensData(
             address(mockERC20),
             _DEFAULT_RECIPIENT,
+            "",
             amount
         );
 
@@ -590,6 +594,7 @@ contract ERC20BridgeTest is Test {
         bytes memory message1 = erc20Bridge.encodeMintBridgeTokensData(
             address(mockERC20),
             recipient1,
+            "",
             amount1
         );
 
@@ -606,6 +611,7 @@ contract ERC20BridgeTest is Test {
         bytes memory message2 = erc20Bridge.encodeMintBridgeTokensData(
             address(mockERC20),
             recipient2,
+            "",
             amount2
         );
 

@@ -33,6 +33,7 @@ contract ERC20Bridge is
         address destinationBridgeAddress;
         address wrappedContractAddress;
         address recipient;
+        string cosmosRecipient;
         uint256 totalAmount;
         uint256 primaryFeeAmount;
         uint256 secondaryFeeAmount;
@@ -80,6 +81,27 @@ contract ERC20Bridge is
             .getBlockchainID();
     }
 
+    function bridgeTokens(
+        bytes32 destinationBlockchainID,
+        address destinationBridgeAddress,
+        address tokenContractAddress,
+        address recipient,
+        uint256 totalAmount,
+        uint256 primaryFeeAmount,
+        uint256 secondaryFeeAmount
+    ) public {
+        ibcBridgeTokens(
+            destinationBlockchainID,
+            destinationBridgeAddress,
+            tokenContractAddress,
+            recipient,
+            "",
+            totalAmount,
+            primaryFeeAmount,
+            secondaryFeeAmount
+        );
+    }
+
     /**
      * @dev See {IERC20Bridge-bridgeTokens}.
      *
@@ -89,15 +111,16 @@ contract ERC20Bridge is
      * - For wrapped tokens, `totalAmount` must be greater than the sum of the primary and secondary fee amounts.
      * - For native tokens, `adjustedAmount` after safe transfer must be greater than the primary fee amount.
      */
-    function bridgeTokens(
+    function ibcBridgeTokens(
         bytes32 destinationBlockchainID,
         address destinationBridgeAddress,
         address tokenContractAddress,
         address recipient,
+        string memory cosmosRecipient,
         uint256 totalAmount,
         uint256 primaryFeeAmount,
         uint256 secondaryFeeAmount
-    ) external nonReentrant {
+    ) public nonReentrant {
         // Bridging tokens within a single chain is not allowed.
         require(
             destinationBlockchainID != currentBlockchainID,
@@ -133,6 +156,7 @@ contract ERC20Bridge is
                         destinationBridgeAddress: destinationBridgeAddress,
                         wrappedContractAddress: tokenContractAddress,
                         recipient: recipient,
+                        cosmosRecipient: cosmosRecipient,
                         totalAmount: totalAmount,
                         primaryFeeAmount: primaryFeeAmount,
                         secondaryFeeAmount: secondaryFeeAmount
@@ -170,6 +194,7 @@ contract ERC20Bridge is
                 destinationBridgeAddress: destinationBridgeAddress,
                 nativeContractAddress: tokenContractAddress,
                 recipient: recipient,
+                cosmosRecipient: cosmosRecipient,
                 totalAmount: adjustedAmount,
                 feeAmount: primaryFeeAmount
             });
@@ -273,6 +298,7 @@ contract ERC20Bridge is
     function encodeMintBridgeTokensData(
         address nativeContractAddress,
         address recipient,
+        string memory cosmosRecipient,
         uint256 bridgeAmount
     ) public pure returns (bytes memory) {
         // ABI encode the Mint action and corresponding parameters for the mintBridgeTokens
@@ -280,6 +306,7 @@ contract ERC20Bridge is
         bytes memory paramsData = abi.encode(
             nativeContractAddress,
             recipient,
+            cosmosRecipient,
             bridgeAmount
         );
         return abi.encode(BridgeAction.Mint, paramsData);
@@ -293,6 +320,7 @@ contract ERC20Bridge is
         address destinationBridgeAddress,
         address nativeContractAddress,
         address recipient,
+        string memory cosmosRecipient,
         uint256 amount,
         uint256 feeAmount
     ) public pure returns (bytes memory) {
@@ -304,6 +332,7 @@ contract ERC20Bridge is
             destinationBridgeAddress,
             nativeContractAddress,
             recipient,
+            cosmosRecipient,
             amount,
             feeAmount
         );
@@ -346,13 +375,15 @@ contract ERC20Bridge is
             (
                 address nativeContractAddress,
                 address recipient,
+                string memory cosmosRecipient,
                 uint256 amount
-            ) = abi.decode(actionData, (address, address, uint256));
+            ) = abi.decode(actionData, (address, address, string, uint256));
             _mintBridgeTokens(
                 originBlockchainID,
                 originSenderAddress,
                 nativeContractAddress,
                 recipient,
+                cosmosRecipient,
                 amount
             );
         } else if (action == BridgeAction.Transfer) {
@@ -361,11 +392,12 @@ contract ERC20Bridge is
                 address destinationBridgeAddress,
                 address nativeContractAddress,
                 address recipient,
+                string memory cosmosRecipient,
                 uint256 totalAmount,
                 uint256 secondaryFeeAmount
             ) = abi.decode(
                     actionData,
-                    (bytes32, address, address, address, uint256, uint256)
+                    (bytes32, address, address, address, string, uint256, uint256)
                 );
             _transferBridgeTokens({
                 sourceBlockchainID: originBlockchainID,
@@ -374,6 +406,7 @@ contract ERC20Bridge is
                 destinationBridgeAddress: destinationBridgeAddress,
                 nativeContractAddress: nativeContractAddress,
                 recipient: recipient,
+                cosmosRecipient: cosmosRecipient,
                 totalAmount: totalAmount,
                 secondaryFeeAmount: secondaryFeeAmount
             });
@@ -443,6 +476,7 @@ contract ERC20Bridge is
         address nativeBridgeAddress,
         address nativeContractAddress,
         address recipient,
+        string memory cosmosRecipient,
         uint256 amount
     ) private nonReentrant {
         // The recipient cannot be the zero address.
@@ -479,6 +513,7 @@ contract ERC20Bridge is
         address destinationBridgeAddress,
         address nativeContractAddress,
         address recipient,
+        string memory cosmosRecipient,
         uint256 totalAmount,
         uint256 secondaryFeeAmount
     ) private nonReentrant {
@@ -529,6 +564,7 @@ contract ERC20Bridge is
                 destinationBridgeAddress: destinationBridgeAddress,
                 nativeContractAddress: nativeContractAddress,
                 recipient: recipient,
+                cosmosRecipient: cosmosRecipient,
                 totalAmount: totalAmount,
                 feeAmount: secondaryFeeAmount
             });
@@ -550,6 +586,7 @@ contract ERC20Bridge is
         address destinationBridgeAddress,
         address nativeContractAddress,
         address recipient,
+        string memory cosmosRecipient,
         uint256 totalAmount,
         uint256 feeAmount
     ) private {
@@ -586,6 +623,7 @@ contract ERC20Bridge is
         bytes memory messageData = encodeMintBridgeTokensData(
             nativeContractAddress,
             recipient,
+            cosmosRecipient,
             bridgeAmount
         );
 
@@ -679,6 +717,7 @@ contract ERC20Bridge is
                 .destinationBridgeAddress,
             nativeContractAddress: bridgeToken.nativeAsset(),
             recipient: wrappedTransferInfo.recipient,
+            cosmosRecipient: wrappedTransferInfo.cosmosRecipient,
             amount: bridgeAmount,
             feeAmount: wrappedTransferInfo.secondaryFeeAmount
         });
