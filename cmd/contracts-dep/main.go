@@ -12,6 +12,7 @@ import (
 	"github.com/ava-labs/subnet-evm/core/types"
 	"github.com/ava-labs/subnet-evm/ethclient"
 	erc20bridge "github.com/ava-labs/teleporter/abi-bindings/go/CrossChainApplications/ERC20Bridge/ERC20Bridge"
+	ics20bridge "github.com/ava-labs/teleporter/abi-bindings/go/CrossChainApplications/ERC20Bridge/ICS20Bridge"
 	exampleerc20 "github.com/ava-labs/teleporter/abi-bindings/go/Mocks/ExampleERC20"
 	teleportermessenger "github.com/ava-labs/teleporter/abi-bindings/go/Teleporter/TeleporterMessenger"
 	teleporterregistry "github.com/ava-labs/teleporter/abi-bindings/go/Teleporter/upgrades/TeleporterRegistry"
@@ -119,10 +120,18 @@ func main() {
 	})
 	print("  >", teleporterRegistry, err)
 
-	fmt.Printf("Deploy tokens [ERC20Bridge]\n")
+	fmt.Printf("Deploy [ERC20Bridge]\n")
 	printFn("  >", func() (common.Address, error) {
 		return deployer(func() (*types.Transaction, error) {
 			_, tx, _, err := erc20bridge.DeployERC20Bridge(opts, client, teleporterRegistry)
+			return tx, err
+		})
+	})
+
+	fmt.Printf("Deploy [ICS20Bridge]\n")
+	printFn("  >", func() (common.Address, error) {
+		return deployer(func() (*types.Transaction, error) {
+			_, tx, _, err := ics20bridge.DeployICS20Bridge(opts, client, teleporterRegistry, "some_channel")
 			return tx, err
 		})
 	})
